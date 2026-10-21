@@ -17,6 +17,7 @@ interface Investment {
   category: string
   tier: string
   amountInvested: number | null
+  progressPercentage: number | null
   fundingProgress: string
   expectedSettlement: string
   dateInvested: string
@@ -93,8 +94,9 @@ function mapInvestment(record: InvestmentRecord): Investment {
   const target = numberValue(packageProgress, ['target_amount']) ?? numberValue(pkg, ['fund_amount', 'target_amount']) ?? numberValue(record, ['target_amount', 'package_amount'])
   const categoryValue = String(valueOf(pkg, ['category']) ?? valueOf(record, ['farming_category', 'category']) ?? '')
   const category = categoryValue.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-  const progressValue = valueOf(packageProgress, ['progress_percentage']) ?? valueOf(record, ['funding_progress', 'progress'])
+  const progressValue = numberValue(record, ['funding_progress_percentage']) ?? numberValue(packageProgress, ['progress_percentage']) ?? numberValue(record, ['funding_progress', 'progress'])
   const expectedDate = valueOf(settlementInfo, ['expected_settlement_date']) ?? valueOf(pkg, ['expected_payback_date', 'expected_settlement_date']) ?? valueOf(record, ['expected_settlement_date', 'expected_payback_date', 'due_date'])
+  const expectedSettlementAmount = numberValue(settlementInfo, ['expected_settlement_amount']) ?? numberValue(record, ['expected_settlement', 'expected_settlement_amount'])
   const dateInvested = valueOf(record, ['invested_date_str']) ?? valueOf(investmentDetails, ['date_invested']) ?? valueOf(record, ['created_at', 'date_invested', 'investment_date'])
   const investmentCode = valueOf(investmentDetails, ['investment_id_code'])
   return {
@@ -103,8 +105,9 @@ function mapInvestment(record: InvestmentRecord): Investment {
     category: category || '—',
     tier: String(valueOf(pkg, ['package_type', 'type']) ?? valueOf(record, ['package_code', 'package_type', 'tier']) ?? '—').replace(/\b\w/g, (letter) => letter.toUpperCase()),
     amountInvested: amount,
-    fundingProgress: progressValue !== undefined ? String(progressValue) : raised !== null && target ? `${Math.round((raised / target) * 100)}%` : '—',
-    expectedSettlement: formatDate(expectedDate),
+    progressPercentage: progressValue,
+    fundingProgress: progressValue !== null ? `${progressValue}%` : raised !== null && target ? `${Math.round((raised / target) * 100)}%` : '—',
+    expectedSettlement: expectedSettlementAmount !== null ? formatCurrency(expectedSettlementAmount) : formatDate(expectedDate),
     dateInvested: formatDate(dateInvested),
     status: String(valueOf(investmentDetails, ['status']) ?? valueOf(record, ['status', 'investment_status']) ?? '—').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()),
     investmentId: String(investmentCode ?? rawId ?? '—'),
@@ -115,7 +118,7 @@ function mapInvestment(record: InvestmentRecord): Investment {
     farmSize: String(valueOf(packageProgress, ['total_farm_size_ha']) ?? valueOf(pkg, ['farm_size', 'total_farm_size']) ?? '—'),
     locations: String(valueOf(packageProgress, ['locations_count']) ?? valueOf(pkg, ['location_count', 'locations']) ?? '—'),
     expectedSettlementDate: formatDate(expectedDate),
-    expectedSettlementAmount: numberValue(settlementInfo, ['expected_settlement_amount']),
+    expectedSettlementAmount,
   }
 }
 
@@ -443,7 +446,7 @@ onMounted(async () => {
           <div class="details-card">
             <div class="details-card__header">
               <h3 class="details-card__title">Package Funding Progress</h3>
-              <span class="progress-percentage">{{ getProgressPercentage(selectedInvestment.raised, selectedInvestment.targetAmount) }}%</span>
+              <span class="progress-percentage">{{ selectedInvestment.progressPercentage ?? getProgressPercentage(selectedInvestment.raised, selectedInvestment.targetAmount) }}%</span>
             </div>
             <p class="details-card__subtitle">Details of your contribution to this Package</p>
 
@@ -451,7 +454,7 @@ onMounted(async () => {
               <div class="progress-bar-track">
                 <div
                   class="progress-bar-fill"
-                  :style="{ width: getProgressPercentage(selectedInvestment.raised, selectedInvestment.targetAmount) + '%' }"
+                  :style="{ width: Math.min(100, selectedInvestment.progressPercentage ?? getProgressPercentage(selectedInvestment.raised, selectedInvestment.targetAmount)) + '%' }"
                 ></div>
               </div>
             </div>
