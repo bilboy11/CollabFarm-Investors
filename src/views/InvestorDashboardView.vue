@@ -307,14 +307,10 @@ onMounted(async () => {
               </h3>
             </header>
             <ul class="overdue-list">
-              <li v-for="(item, index) in overdueReturns" :key="String(item.id ?? index)">
+              <li v-for="item in overdueReturns" :key="String(item.id ?? item.investment_id ?? item.package_name)">
                 <img
-                  :src="
-                    text(
-                      valueFrom(item, ['avatar', 'avatar_url', 'image']),
-                      avatarFallbacks[index % avatarFallbacks.length],
-                    )
-                  "
+                  v-if="valueFrom(item, ['avatar', 'avatar_url', 'image'])"
+                  :src="text(valueFrom(item, ['avatar', 'avatar_url', 'image']))"
                   alt=""
                 />
                 <div class="overdue-list__meta">
@@ -428,7 +424,7 @@ onMounted(async () => {
           <article class="panel panel--activity">
             <header class="panel__head"><h3>Recent Activity</h3></header>
             <ul class="activity-list">
-              <li v-for="(item, index) in activities" :key="String(item.id ?? index)">
+              <li v-for="(item, index) in activities" :key="index">
                 <span
                   class="activity-list__dot"
                   :class="`activity-list__dot--${recordValue(item, ['tone'], 'green')}`"
