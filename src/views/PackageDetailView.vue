@@ -9,6 +9,7 @@ const router = useRouter()
 
 const showInvestModal = ref(false)
 const investError = ref('')
+const investSuccess = ref('')
 const isInvesting = ref(false)
 
 const packageData = ref({
@@ -54,6 +55,7 @@ function numberFrom(value: unknown): number | null {
 function openInvestModal() {
   showInvestModal.value = true
   investError.value = ''
+  investSuccess.value = ''
 }
 
 function closeInvestModal() {
@@ -66,14 +68,12 @@ async function invest() {
   try {
     isInvesting.value = true
     investError.value = ''
-    if (!packageData.value.id || packageData.value.amount === null) {
-      throw new Error('This package is missing the details required to invest.')
+    if (!packageData.value.id) {
+      throw new Error('This package is missing its ID.')
     }
-    await investmentsApi.invest({
-      package_id: packageData.value.id,
-      amount: packageData.value.amount,
-    })
+    await investmentsApi.invest(packageData.value.id)
     closeInvestModal()
+    investSuccess.value = 'Your investment was created successfully.'
   } catch (error) {
     const err = error as { response?: { data?: { detail?: string; message?: string } }; message?: string }
     investError.value =
@@ -139,6 +139,11 @@ onMounted(async () => {
     <div v-if="loading" class="loading">Loading package details…</div>
     <div v-else-if="errorMessage" class="error">{{ errorMessage }}</div>
     <div v-else>
+      <div v-if="investSuccess" class="investment-success" role="status">
+        <span>{{ investSuccess }}</span>
+        <button type="button" aria-label="Dismiss success message" @click="investSuccess = ''">×</button>
+      </div>
+
       <!-- Breadcrumb -->
       <div class="breadcrumb">
         <span class="breadcrumb__item" @click="router.push('/dashboard/packages')"
@@ -465,6 +470,27 @@ onMounted(async () => {
   padding: 48px;
   text-align: center;
   color: var(--color-ink-soft);
+}
+
+.investment-success {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid #b7dfc8;
+  border-radius: 10px;
+  background: #edf8f1;
+  color: #1d6844;
+  font-size: 0.9rem;
+}
+
+.investment-success button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
 }
 
 /* Modal Styles */

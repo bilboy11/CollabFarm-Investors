@@ -29,6 +29,7 @@ interface Investment {
   farmSize: string
   locations: string
   expectedSettlementDate: string
+  expectedSettlementAmount: number | null
 }
 
 const selectedInvestment = ref<Investment | null>(null)
@@ -37,6 +38,7 @@ const statusFilter = ref('All Status')
 const packageFilter = ref('All Packages')
 const sortBy = ref('Newest')
 const investments = ref<Investment[]>([])
+const investmentSummary = ref<InvestmentRecord>({})
 const loading = ref(true)
 const errorMessage = ref('')
 const detailLoading = ref(false)
@@ -82,32 +84,38 @@ function formatDate(value: unknown): string {
 
 function mapInvestment(record: InvestmentRecord): Investment {
   const pkg = asRecord(record.package ?? record.funding_package)
+  const investmentDetails = asRecord(record.investment_details)
+  const packageProgress = asRecord(record.package_progress)
+  const settlementInfo = asRecord(record.settlement_info)
   const rawId = valueOf(record, ['id', 'investment_id', 'uuid'])
-  const amount = numberValue(record, ['amount_invested', 'investment_amount', 'amount'])
-  const raised = numberValue(pkg, ['amount_raised', 'raised_amount', 'total_raised']) ?? numberValue(record, ['amount_raised', 'raised_amount'])
-  const target = numberValue(pkg, ['fund_amount', 'target_amount']) ?? numberValue(record, ['target_amount', 'package_amount'])
-  const categoryValue = String(valueOf(pkg, ['category']) ?? valueOf(record, ['category']) ?? '')
+  const amount = numberValue(investmentDetails, ['amount_invested']) ?? numberValue(record, ['amount_invested', 'investment_amount', 'amount'])
+  const raised = numberValue(packageProgress, ['amount_raised']) ?? numberValue(pkg, ['amount_raised', 'raised_amount', 'total_raised']) ?? numberValue(record, ['amount_raised', 'raised_amount'])
+  const target = numberValue(packageProgress, ['target_amount']) ?? numberValue(pkg, ['fund_amount', 'target_amount']) ?? numberValue(record, ['target_amount', 'package_amount'])
+  const categoryValue = String(valueOf(pkg, ['category']) ?? valueOf(record, ['farming_category', 'category']) ?? '')
   const category = categoryValue.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-  const progressValue = valueOf(record, ['funding_progress', 'progress'])
-  const expectedDate = valueOf(pkg, ['expected_payback_date', 'expected_settlement_date']) ?? valueOf(record, ['expected_settlement_date', 'expected_payback_date'])
+  const progressValue = valueOf(packageProgress, ['progress_percentage']) ?? valueOf(record, ['funding_progress', 'progress'])
+  const expectedDate = valueOf(settlementInfo, ['expected_settlement_date']) ?? valueOf(pkg, ['expected_payback_date', 'expected_settlement_date']) ?? valueOf(record, ['expected_settlement_date', 'expected_payback_date', 'due_date'])
+  const dateInvested = valueOf(record, ['invested_date_str']) ?? valueOf(investmentDetails, ['date_invested']) ?? valueOf(record, ['created_at', 'date_invested', 'investment_date'])
+  const investmentCode = valueOf(investmentDetails, ['investment_id_code'])
   return {
     id: (rawId as string | number | undefined) ?? '—',
-    packageName: String(valueOf(pkg, ['title', 'name']) ?? valueOf(record, ['package_name', 'title']) ?? '—'),
+    packageName: String(valueOf(pkg, ['title', 'name']) ?? valueOf(record, ['package_title', 'package_name', 'title']) ?? '—'),
     category: category || '—',
-    tier: String(valueOf(pkg, ['package_type', 'type']) ?? valueOf(record, ['package_type', 'tier']) ?? '—').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+    tier: String(valueOf(pkg, ['package_type', 'type']) ?? valueOf(record, ['package_code', 'package_type', 'tier']) ?? '—').replace(/\b\w/g, (letter) => letter.toUpperCase()),
     amountInvested: amount,
     fundingProgress: progressValue !== undefined ? String(progressValue) : raised !== null && target ? `${Math.round((raised / target) * 100)}%` : '—',
     expectedSettlement: formatDate(expectedDate),
-    dateInvested: formatDate(valueOf(record, ['created_at', 'date_invested', 'investment_date'])),
-    status: String(valueOf(record, ['status', 'investment_status']) ?? '—').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()),
-    investmentId: String(rawId ?? '—'),
-    transactionRef: String(valueOf(record, ['transaction_reference', 'transaction_ref', 'reference']) ?? '—'),
+    dateInvested: formatDate(dateInvested),
+    status: String(valueOf(investmentDetails, ['status']) ?? valueOf(record, ['status', 'investment_status']) ?? '—').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()),
+    investmentId: String(investmentCode ?? rawId ?? '—'),
+    transactionRef: String(valueOf(investmentDetails, ['transaction_reference']) ?? valueOf(record, ['transaction_reference', 'transaction_ref', 'reference']) ?? '—'),
     raised,
     targetAmount: target,
-    farmersSupported: String(valueOf(pkg, ['farmers_supported', 'farmer_count']) ?? '—'),
-    farmSize: String(valueOf(pkg, ['farm_size', 'total_farm_size']) ?? '—'),
-    locations: String(valueOf(pkg, ['location_count', 'locations']) ?? '—'),
+    farmersSupported: String(valueOf(packageProgress, ['farmers_supported']) ?? valueOf(pkg, ['farmers_supported', 'farmer_count']) ?? '—'),
+    farmSize: String(valueOf(packageProgress, ['total_farm_size_ha']) ?? valueOf(pkg, ['farm_size', 'total_farm_size']) ?? '—'),
+    locations: String(valueOf(packageProgress, ['locations_count']) ?? valueOf(pkg, ['location_count', 'locations']) ?? '—'),
     expectedSettlementDate: formatDate(expectedDate),
+    expectedSettlementAmount: numberValue(settlementInfo, ['expected_settlement_amount']),
   }
 }
 
@@ -122,10 +130,10 @@ const summaryCards = computed(() => {
   const pending = investments.value.filter((investment) => investment.status.toLowerCase() === 'pending')
   const packages = new Map(investments.value.filter((investment) => investment.targetAmount !== null).map((investment) => [investment.packageName, investment.targetAmount as number]))
   return [
-    { id: 'total-invested', label: 'Total Invested', value: formatCurrency(sum(investments.value)), icon: totalIcon },
-    { id: 'active-investments', label: 'Active Investments', value: formatCurrency(sum(active)), icon: activeIcon },
-    { id: 'packages-funded', label: 'Packages Funded', value: formatCurrency([...packages.values()].reduce((total, amount) => total + amount, 0)), icon: disbursedIcon },
-    { id: 'pending-settlement', label: 'Pending Settlement', value: formatCurrency(sum(pending)), icon: pendingIcon },
+    { id: 'total-invested', label: 'Total Invested', value: formatCurrency(numberValue(investmentSummary.value, ['total_invested']) ?? sum(investments.value)), icon: totalIcon },
+    { id: 'active-investments', label: 'Active Investments', value: String(numberValue(investmentSummary.value, ['active_investments']) ?? active.length), icon: activeIcon },
+    { id: 'packages-funded', label: 'Packages Funded', value: String(numberValue(investmentSummary.value, ['packages_funded']) ?? packages.size), icon: disbursedIcon },
+    { id: 'pending-settlement', label: 'Pending Settlement', value: formatCurrency(numberValue(investmentSummary.value, ['pending_settlement']) ?? sum(pending)), icon: pendingIcon },
   ]
 })
 
@@ -162,7 +170,7 @@ async function selectInvestment(investment: Investment) {
   selectedInvestment.value = investment
   detailLoading.value = true
   try {
-    const response = await investmentsApi.detail(investment.investmentId)
+    const response = await investmentsApi.detail(String(investment.id))
     const payload = asRecord(response)
     const detail = asRecord(payload.data ?? payload.investment ?? payload)
     if (Object.keys(detail).length) selectedInvestment.value = mapInvestment(detail)
@@ -195,7 +203,11 @@ function getCategoryIcon(category: string): string {
 
 onMounted(async () => {
   try {
-    investments.value = extractInvestments(await investmentsApi.list()).map(mapInvestment)
+    const response = await investmentsApi.list()
+    const payload = asRecord(response)
+    const data = asRecord(payload.data ?? payload)
+    investmentSummary.value = asRecord(data.summary)
+    investments.value = extractInvestments(response).map(mapInvestment)
   } catch (error) {
     const err = error as { response?: { data?: { detail?: string; message?: string } }; message?: string }
     errorMessage.value = err.response?.data?.detail || err.response?.data?.message || err.message || 'Unable to load investments.'
@@ -514,6 +526,10 @@ onMounted(async () => {
             <div class="spec-row spec-row--full">
               <span class="spec-row__label"><strong>Expected Settlement Date</strong></span>
               <span class="spec-row__value">{{ selectedInvestment.expectedSettlementDate }}</span>
+            </div>
+            <div class="spec-row spec-row--full">
+              <span class="spec-row__label"><strong>Expected Settlement Amount</strong></span>
+              <span class="spec-row__value">{{ formatCurrency(selectedInvestment.expectedSettlementAmount) }}</span>
             </div>
           </div>
         </div>
