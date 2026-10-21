@@ -178,7 +178,7 @@ const footerColumns = [
           </p>
           <div class="hero__actions">
             <a class="btn btn--primary" href="/dashboard" @click.prevent="openInvestorPortal">Investor Portal →</a>
-            <a class="btn btn--light hero__btn-light" href="/signup">Get Started</a>
+            <a class="btn btn--light hero__btn-light" href="/signup?role=investor">Get Started</a>
           </div>
         </div>
         <ul class="highlights" aria-label="Platform highlights">
