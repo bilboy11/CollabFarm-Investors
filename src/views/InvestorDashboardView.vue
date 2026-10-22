@@ -1254,6 +1254,98 @@ td {
     flex-direction: column;
   }
 
+  .panel--farmers {
+    min-width: 0;
+    padding: 20px 16px;
+    gap: 18px;
+  }
+
+  .panel--farmers .panel__head--split {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .panel--farmers .table-wrap {
+    flex: initial;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .panel--farmers .investment-table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    table-layout: auto;
+  }
+
+  .panel--farmers .investment-table thead {
+    display: none;
+  }
+
+  .panel--farmers .investment-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .panel--farmers .investment-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid #e8eeea;
+  }
+
+  .panel--farmers .investment-table tbody td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    overflow: visible;
+    font-size: 0.78rem;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+  }
+
+  .panel--farmers .investment-table tbody td::before {
+    display: block;
+    margin-bottom: 3px;
+    color: #8a948f;
+    font-size: 0.61rem;
+    font-weight: 600;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+  }
+
+  .panel--farmers .investment-table tbody td:nth-child(1) {
+    grid-column: 1 / -1;
+  }
+
+  .panel--farmers .investment-table tbody td[colspan] {
+    grid-column: 1 / -1;
+  }
+
+  .panel--farmers .investment-table tbody td[colspan]::before {
+    content: none;
+  }
+
+  .panel--farmers .investment-table tbody td:nth-child(1)::before { content: 'Package'; }
+  .panel--farmers .investment-table tbody td:nth-child(2)::before { content: 'Cooperative'; }
+  .panel--farmers .investment-table tbody td:nth-child(3)::before { content: 'Category'; }
+  .panel--farmers .investment-table tbody td:nth-child(4)::before { content: 'Invested'; }
+  .panel--farmers .investment-table tbody td:nth-child(5)::before { content: 'Expected return'; }
+  .panel--farmers .investment-table tbody td:nth-child(6)::before { content: 'Due date'; }
+  .panel--farmers .investment-table tbody td:nth-child(7)::before { content: 'Status'; }
+
+  .panel--farmers .investment-table .package-cell {
+    min-width: 0;
+  }
+
+  .panel--farmers .investment-table .package-cell strong,
+  .panel--farmers .investment-table .package-cell span {
+    overflow-wrap: anywhere;
+  }
+
 }
 
 .dashboard-wrapper {

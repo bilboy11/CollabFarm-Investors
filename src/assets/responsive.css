@@ -1,0 +1,227 @@
+/* Shared responsive behavior for dashboard pages, forms, tables and dialogs. */
+@media (max-width: 900px) {
+  .wallet,
+  .package-detail,
+  .content,
+  .settings-page {
+    padding: 24px;
+  }
+
+  .wallet__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wallet__activity {
+    grid-column: 1 / -1;
+  }
+
+  .profile-header-card,
+  .hero-row,
+  .wallet__header {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .profile-header-card > *,
+  .wallet__header-actions {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  html,
+  body,
+  #app {
+    min-width: 320px;
+    max-width: 100%;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  body .app-shell :is(input, select, textarea) {
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  .wallet,
+  .package-detail,
+  .content,
+  .settings-page,
+  .section-page {
+    padding: 16px;
+  }
+
+  .wallet__header,
+  .wallet__header-actions,
+  .activity-filters,
+  .filter-bar,
+  .pagination,
+  .package-header,
+  .profile-header-card,
+  .setting-row,
+  .investment-success {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wallet__header-actions,
+  .wallet__header-actions > *,
+  .wallet__header > .btn,
+  .wallet__header > button,
+  .btn-primary,
+  .btn-withdraw,
+  .btn-invest,
+  .btn-back,
+  .btn-package-details {
+    width: 100%;
+  }
+
+  .wallet__grid,
+  .summary-cards,
+  .metric-badges,
+  .details-grid,
+  .stats-grid,
+  .kpi-row,
+  .mid-row,
+  .bottom-row {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .wallet__activity,
+  .wallet__packages {
+    grid-column: auto;
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .activity-table,
+  .investment-table,
+  .dashboard-table,
+  .table-wrap,
+  .table-card,
+  .table-responsive {
+    max-width: 100%;
+  }
+
+  .table-wrap,
+  .table-responsive,
+  .wallet__activity {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .activity-table,
+  .investment-table,
+  .dashboard-table {
+    min-width: 600px;
+  }
+
+  .table-card,
+  .details-card,
+  .profile-header-card,
+  .personal-info-card {
+    padding: 16px;
+  }
+
+  .page-header,
+  .section-header,
+  .header-banner,
+  .header-banner__left,
+  .details-card__header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-banner__left,
+  .header-banner__info,
+  .profile-info,
+  .package-header__info {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .topbar {
+    gap: 8px;
+    height: 68px;
+    padding-inline: 12px;
+  }
+
+  .topbar h1 {
+    font-size: 1rem;
+  }
+
+  .topbar__actions {
+    gap: 6px;
+  }
+
+  .account {
+    padding-right: 4px;
+  }
+
+  .hero__actions,
+  .section__actions,
+  .modal-footer {
+    flex-wrap: wrap;
+  }
+
+  body .app-shell .modal-overlay,
+  body .app-shell .paystack-modal-overlay {
+    align-items: flex-end;
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  body .app-shell :is(.modal-content, .password-modal, .paystack-modal-content) {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    border-radius: 16px 16px 12px 12px;
+  }
+
+  body .app-shell :is(.modal-header, .modal-body, .modal-footer, .paystack-modal-header, .paystack-modal-body, .paystack-modal-footer) {
+    padding: 16px;
+  }
+
+  .modal-footer > *,
+  .paystack-modal-footer > * {
+    flex: 1 1 140px;
+  }
+
+  body .app-shell .paystack-modal-body iframe {
+    max-width: 100%;
+    min-height: 52vh;
+  }
+
+  body .app-shell .multi-step-signup {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  body .app-shell .auth-form__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .topbar h1 {
+    max-width: 38vw;
+    font-size: 0.9rem;
+  }
+
+  .summary-card,
+  .metric-badge {
+    padding: 14px;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .modal-footer > * {
+    width: 100%;
+  }
+}
