@@ -292,24 +292,6 @@ watch(
           <h1>Investor Dashboard</h1>
         </div>
         <div class="topbar__actions">
-          <button class="icon-btn" type="button" aria-label="Notifications">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <path
-                d="M4.5 7.2a4.5 4.5 0 0 1 9 0c0 3.2 1.2 4.2 1.2 4.2H3.3S4.5 10.4 4.5 7.2Z"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M7.4 14.2a1.8 1.8 0 0 0 3.2 0"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-              />
-            </svg>
-            <span class="icon-btn__dot" aria-hidden="true"></span>
-          </button>
-
           <div class="account-menu">
           <button
             class="account"
@@ -326,7 +308,7 @@ watch(
                 <path d="M3.5 15c.7-2.5 2.5-3.8 5.5-3.8s4.8 1.3 5.5 3.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
               </svg>
             </span>
-            <span>Account</span>
+            <span class="account__label">Account</span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
               <path
                 d="m3 4.5 3 3 3-3"
@@ -686,9 +668,16 @@ watch(
     padding: 0 16px;
   }
 
-  .account span,
-  .account svg {
+  .account__label,
+  .account > svg {
     display: none;
+  }
+
+  .account {
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 3px;
   }
 }
 </style>

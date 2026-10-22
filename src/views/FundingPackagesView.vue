@@ -621,6 +621,12 @@ function viewPackage(id: string | number) {
 @media (max-width: 768px) {
   .content {
     padding: 16px;
+    min-width: 0;
+  }
+
+  .packages-wrapper {
+    max-width: 100%;
+    overflow-x: clip;
   }
 
   .packages-grid {
@@ -639,11 +645,24 @@ function viewPackage(id: string | number) {
 
   .filter-bar {
     gap: 8px;
+    flex-direction: row;
+    height: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
   }
 
   .filter-btn {
+    flex: 0 0 auto;
+    min-width: max-content;
     padding: 8px 16px;
     font-size: 0.85rem;
+    scroll-snap-align: start;
   }
 }
 </style>
