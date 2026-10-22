@@ -5,7 +5,7 @@ import logoSrc from '@/assets/images/Logo.png'
 
 const router = useRouter()
 const menuOpen = ref(false)
-const isDropdownOpen = ref(false)
+const openDropdown = ref<'login' | 'signup' | null>(null)
 const links = [
   { label: 'How it Works', href: '#how-it-works' },
   { label: 'Solutions', href: '#why-choose' },
@@ -39,8 +39,16 @@ function navigateToSection(href: string) {
 const closeDropdown = (e: MouseEvent) => {
   const target = e.target as HTMLElement
   if (!target.closest('.dropdown')) {
-    isDropdownOpen.value = false
+    openDropdown.value = null
   }
+}
+
+function toggleDropdown(name: 'login' | 'signup') {
+  openDropdown.value = openDropdown.value === name ? null : name
+}
+
+function closeDropdownMenu() {
+  openDropdown.value = null
 }
 
 onMounted(() => {
@@ -70,12 +78,28 @@ onUnmounted(() => {
       </nav>
 
       <div class="actions">
-        <RouterLink class="btn btn--ghost" to="/login">Login</RouterLink>
+        <div class="dropdown">
+          <button
+            class="btn btn--ghost dropdown__toggle"
+            type="button"
+            :aria-expanded="openDropdown === 'login'"
+            @click="toggleDropdown('login')"
+          >
+            Login
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="dropdown__arrow" :class="{ 'dropdown__arrow--open': openDropdown === 'login' }">
+              <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <ul v-if="openDropdown === 'login'" class="dropdown__menu">
+            <li><RouterLink to="/login?role=investor" class="dropdown__item" @click="closeDropdownMenu">Log in as Investor</RouterLink></li>
+            <li><a href="https://collabfarm-cooperative.vercel.app/login" class="dropdown__item" @click="closeDropdownMenu">Log in as Cooperative</a></li>
+          </ul>
+        </div>
         <div class="dropdown">
           <button
             class="btn btn--primary dropdown__toggle"
-            @click="isDropdownOpen = !isDropdownOpen"
-            :aria-expanded="isDropdownOpen"
+            @click="toggleDropdown('signup')"
+            :aria-expanded="openDropdown === 'signup'"
           >
             Get Started
             <svg
@@ -84,7 +108,7 @@ onUnmounted(() => {
               viewBox="0 0 12 12"
               fill="none"
               class="dropdown__arrow"
-              :class="{ 'dropdown__arrow--open': isDropdownOpen }"
+              :class="{ 'dropdown__arrow--open': openDropdown === 'signup' }"
             >
               <path
                 d="M2.5 4.5L6 8L9.5 4.5"
@@ -95,14 +119,14 @@ onUnmounted(() => {
               />
             </svg>
           </button>
-          <ul v-if="isDropdownOpen" class="dropdown__menu">
+          <ul v-if="openDropdown === 'signup'" class="dropdown__menu">
             <li>
               <RouterLink to="/signup?role=investor" class="dropdown__item"
                 >Sign up as Investor</RouterLink
               >
             </li>
             <li>
-              <button type="button" class="dropdown__item">Sign up as Cooperative</button>
+              <a href="https://collabfarm-cooperative.vercel.app/create_account" class="dropdown__item">Sign up as Cooperative</a>
             </li>
           </ul>
         </div>
@@ -137,12 +161,23 @@ onUnmounted(() => {
         {{ link.label }}
       </a>
       <div class="mobile-nav__actions">
-        <RouterLink class="btn btn--ghost" to="/login" @click="closeMenu">Login</RouterLink>
+        <div class="dropdown">
+          <button class="btn btn--ghost dropdown__toggle" type="button" :aria-expanded="openDropdown === 'login'" @click="toggleDropdown('login')">
+            Login
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="dropdown__arrow" :class="{ 'dropdown__arrow--open': openDropdown === 'login' }">
+              <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <ul v-if="openDropdown === 'login'" class="dropdown__menu">
+            <li><RouterLink to="/login?role=investor" class="dropdown__item" @click="closeMenu(); closeDropdownMenu()">Log in as Investor</RouterLink></li>
+            <li><a href="https://collabfarm-cooperative.vercel.app/login" class="dropdown__item" @click="closeMenu(); closeDropdownMenu()">Log in as Cooperative</a></li>
+          </ul>
+        </div>
         <div class="dropdown">
           <button
             class="btn btn--primary dropdown__toggle"
-            @click="isDropdownOpen = !isDropdownOpen"
-            :aria-expanded="isDropdownOpen"
+            @click="toggleDropdown('signup')"
+            :aria-expanded="openDropdown === 'signup'"
           >
             Get Started
             <svg
@@ -151,7 +186,7 @@ onUnmounted(() => {
               viewBox="0 0 12 12"
               fill="none"
               class="dropdown__arrow"
-              :class="{ 'dropdown__arrow--open': isDropdownOpen }"
+              :class="{ 'dropdown__arrow--open': openDropdown === 'signup' }"
             >
               <path
                 d="M2.5 4.5L6 8L9.5 4.5"
@@ -162,14 +197,14 @@ onUnmounted(() => {
               />
             </svg>
           </button>
-          <ul v-if="isDropdownOpen" class="dropdown__menu">
+          <ul v-if="openDropdown === 'signup'" class="dropdown__menu">
             <li>
               <RouterLink to="/signup?role=investor" class="dropdown__item" @click="closeMenu"
                 >Sign up as Investor</RouterLink
               >
             </li>
             <li>
-              <button type="button" class="dropdown__item">Sign up as Cooperative</button>
+              <a href="https://collabfarm-cooperative.vercel.app/create_account" class="dropdown__item" @click="closeMenu(); closeDropdownMenu()">Sign up as Cooperative</a>
             </li>
           </ul>
         </div>
