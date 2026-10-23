@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import heroImage from '@/assets/images/hero.png'
+import heroImage from '@/assets/images/package-hero.webp'
 import { investmentsApi, packagesApi } from '@/services/api'
 
 const route = useRoute()
@@ -50,6 +50,23 @@ function numberFrom(value: unknown): number | null {
   if (value === undefined || value === null || value === '') return null
   const number = Number(value)
   return Number.isFinite(number) ? number : null
+}
+
+function normalizeIncluded(value: unknown): string[] {
+  if (typeof value === 'string') {
+    const text = value.trim()
+    return text ? [text] : []
+  }
+  if (typeof value === 'number') return [String(value)]
+  if (Array.isArray(value)) return value.flatMap(normalizeIncluded)
+  if (!value || typeof value !== 'object') return []
+
+  const record = value as Record<string, unknown>
+  const preferredFields = ['title', 'name', 'label', 'description', 'text', 'value', 'benefit', 'item', 'detail']
+  for (const field of preferredFields) {
+    if (field in record) return normalizeIncluded(record[field])
+  }
+  return []
 }
 
 function openInvestModal() {
@@ -119,7 +136,7 @@ onMounted(async () => {
       farmingCycle: tenure !== null ? `${tenure} Months` : String(raw.farming_cycle ?? '—'),
       farmersCount: farmerCount,
       investorsCount: investorCount,
-      whatsIncluded: Array.isArray(included) ? included.map(String) : [],
+      whatsIncluded: normalizeIncluded(included),
     }
   } catch (error) {
     const err = error as { response?: { data?: { detail?: string; message?: string } }; message?: string }
@@ -178,7 +195,15 @@ onMounted(async () => {
         <div class="package-content__left">
           <!-- Package Image -->
           <div class="package-image">
-            <img :src="heroImage" alt="Package Hero" class="package-image__img" />
+            <img
+              :src="heroImage"
+              alt=""
+              class="package-image__img"
+              width="1209"
+              height="212"
+              fetchpriority="high"
+              decoding="async"
+            />
           </div>
 
           <!-- Amount -->
@@ -365,6 +390,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  margin-top: 12px;
 }
 
 .package-content__left {
@@ -438,6 +464,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #f7f8f6;
 }
 
 .whats-included h3 {

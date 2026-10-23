@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import totalIcon from '@/assets/images/total.png'
 import activeIcon from '@/assets/images/active.png'
 import disbursedIcon from '@/assets/images/Disbursed.png'
@@ -11,8 +12,11 @@ import livestockIcon from '@/assets/images/livestock.png'
 import poultryIcon from '@/assets/images/poultry.png'
 import { investmentsApi } from '@/services/api'
 
+const router = useRouter()
+
 interface Investment {
   id: string | number
+  packageId: string | number | null
   packageName: string
   category: string
   tier: string
@@ -89,6 +93,7 @@ function mapInvestment(record: InvestmentRecord): Investment {
   const packageProgress = asRecord(record.package_progress)
   const settlementInfo = asRecord(record.settlement_info)
   const rawId = valueOf(record, ['id', 'investment_id', 'uuid'])
+  const rawPackageId = valueOf(pkg, ['id', 'package_id', 'uuid']) ?? valueOf(record, ['package_id', 'packageId', 'funding_package_id'])
   const amount = numberValue(investmentDetails, ['amount_invested']) ?? numberValue(record, ['amount_invested', 'investment_amount', 'amount'])
   const raised = numberValue(packageProgress, ['amount_raised']) ?? numberValue(pkg, ['amount_raised', 'raised_amount', 'total_raised']) ?? numberValue(record, ['amount_raised', 'raised_amount'])
   const target = numberValue(packageProgress, ['target_amount']) ?? numberValue(pkg, ['fund_amount', 'target_amount']) ?? numberValue(record, ['target_amount', 'package_amount'])
@@ -101,6 +106,7 @@ function mapInvestment(record: InvestmentRecord): Investment {
   const investmentCode = valueOf(investmentDetails, ['investment_id_code'])
   return {
     id: (rawId as string | number | undefined) ?? '—',
+    packageId: typeof rawPackageId === 'string' || typeof rawPackageId === 'number' ? rawPackageId : null,
     packageName: String(valueOf(pkg, ['title', 'name']) ?? valueOf(record, ['package_title', 'package_name', 'title']) ?? '—'),
     category: category || '—',
     tier: String(valueOf(pkg, ['package_type', 'type']) ?? valueOf(record, ['package_code', 'package_type', 'tier']) ?? '—').replace(/\b\w/g, (letter) => letter.toUpperCase()),
@@ -176,7 +182,13 @@ async function selectInvestment(investment: Investment) {
     const response = await investmentsApi.detail(String(investment.id))
     const payload = asRecord(response)
     const detail = asRecord(payload.data ?? payload.investment ?? payload)
-    if (Object.keys(detail).length) selectedInvestment.value = mapInvestment(detail)
+    if (Object.keys(detail).length) {
+      const mappedDetail = mapInvestment(detail)
+      selectedInvestment.value = {
+        ...mappedDetail,
+        packageId: mappedDetail.packageId ?? investment.packageId,
+      }
+    }
   } catch (error) {
     const err = error as { response?: { data?: { detail?: string; message?: string } }; message?: string }
     errorMessage.value = err.response?.data?.detail || err.response?.data?.message || err.message || 'Unable to load investment details.'
@@ -187,6 +199,12 @@ async function selectInvestment(investment: Investment) {
 
 function goBack() {
   selectedInvestment.value = null
+}
+
+function viewPackageDetails() {
+  const packageId = selectedInvestment.value?.packageId
+  if (packageId === null || packageId === undefined) return
+  router.push({ name: 'dashboard-package-detail', params: { id: String(packageId) } })
 }
 
 function getProgressPercentage(raised: number | null, target: number | null): number {
@@ -378,7 +396,12 @@ onMounted(async () => {
             </p>
           </div>
         </div>
-        <button class="btn-package-details" type="button">
+        <button
+          class="btn-package-details"
+          type="button"
+          :disabled="!selectedInvestment.packageId"
+          @click="viewPackageDetails"
+        >
           View Package Details ›
         </button>
       </div>
@@ -448,7 +471,7 @@ onMounted(async () => {
               <h3 class="details-card__title">Package Funding Progress</h3>
               <span class="progress-percentage">{{ selectedInvestment.progressPercentage ?? getProgressPercentage(selectedInvestment.raised, selectedInvestment.targetAmount) }}%</span>
             </div>
-            <p class="details-card__subtitle">Details of your contribution to this Package</p>
+            <p class="details-card__subtitle">Overall funding and farm impact for this package.</p>
 
             <div class="progress-bar-container">
               <div class="progress-bar-track">
