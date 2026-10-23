@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import authImage from '@/assets/images/Authentication.png'
+import authImage from '@/assets/images/Authentication.webp'
 import logoSrc from '@/assets/images/Logo.png'
 
 defineProps<{
@@ -26,7 +26,7 @@ defineProps<{
 
     <div class="auth-layout">
       <aside class="auth-visual" aria-hidden="true">
-        <img class="auth-visual__img" :src="authImage" alt="" />
+        <img class="auth-visual__img" :src="authImage" alt="" fetchpriority="high" decoding="async" />
         <div class="auth-visual__scrim"></div>
         <div class="auth-visual__content">
           <p class="auth-visual__copy">
