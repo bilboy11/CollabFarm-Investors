@@ -17,6 +17,11 @@ const currentStep = ref(1)
 const totalSteps = 2
 const router = useRouter()
 
+function onNinInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  ninNumber.value = input.value.replace(/\D/g, '').slice(0, 11)
+}
+
 // Dynamic title and subtitle based on current step
 const stepTitle = computed(() => {
   if (currentStep.value === 1) return 'Basic Information'
@@ -139,12 +144,17 @@ defineExpose({
           </label>
 
           <label class="field field--full">
-            <span>ID Number *</span>
+            <span>NIN Number *</span>
             <input
               v-model="ninNumber"
               type="text"
               name="id_number"
-              placeholder="Enter your ID number"
+              inputmode="numeric"
+              maxlength="11"
+              minlength="11"
+              pattern="[0-9]{11}"
+              placeholder="Enter your 11-digit NIN"
+              @input="onNinInput"
               required
             />
           </label>
