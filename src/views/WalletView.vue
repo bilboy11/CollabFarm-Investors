@@ -102,6 +102,11 @@ function closeFundWalletModal() {
   isFunding.value = false
 }
 
+function backToFundModal() {
+  showFundConfirmModal.value = false
+  showFundWalletModal.value = true
+}
+
 function closePaystackModal() {
   showPaystackModal.value = false
   paystackUrl.value = ''
@@ -503,7 +508,12 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <div class="wallet__grid">
+    <p v-if="loading" class="wallet-message">Loading wallet data…</p>
+    <p v-else-if="errorMessage" class="wallet-message wallet-message--error" role="alert">
+      {{ errorMessage }}
+    </p>
+
+    <div v-else class="wallet__grid">
       <div class="balance-card">
         <div class="balance-card__header">
           <img :src="availableIcon" alt="Available" class="balance-card__icon" />
@@ -728,15 +738,7 @@ onBeforeUnmount(() => {
           <p v-if="fundError" class="modal-error">{{ fundError }}</p>
         </div>
         <div class="modal-footer">
-          <button
-            class="btn btn--secondary"
-            @click="
-              showFundConfirmModal = false;
-              showFundWalletModal = true
-            "
-          >
-            Back
-          </button>
+          <button class="btn btn--secondary" @click="backToFundModal">Back</button>
           <button class="btn btn--primary" @click="confirmFundWallet" :disabled="isFunding">
             {{ isFunding ? 'Processing...' : 'Confirm' }}
           </button>
@@ -877,6 +879,20 @@ onBeforeUnmount(() => {
   margin: 0;
   color: var(--color-ink-soft);
   font-size: 0.95rem;
+}
+
+.wallet-message {
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: #fff;
+  text-align: center;
+}
+
+.wallet-message--error {
+  background: #fee;
+  color: #a22;
+  border-color: #fcc;
 }
 
 .wallet__grid {
@@ -1218,6 +1234,39 @@ onBeforeUnmount(() => {
   overflow: auto;
 }
 
+.balance-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border: var(--stroke-05) solid var(--color-border);
+  border-radius: 16px;
+  background: #fff;
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.balance-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.balance-card:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.balance-card:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .package-card {
   display: flex;
   flex-direction: column;
@@ -1372,12 +1421,21 @@ onBeforeUnmount(() => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  padding: 20px;
   background: rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.3s ease-out forwards;
   z-index: 1000;
-  padding: 16px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-content {

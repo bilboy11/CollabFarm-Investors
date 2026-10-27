@@ -303,7 +303,7 @@ onMounted(async () => {
                 <th>PACKAGE</th>
                 <th>PACKAGE TYPE</th>
                 <th>AMOUNT INVESTED</th>
-                <th>FUNDING PROGRESS</th>
+                <th>EXPECTED SETTLEMENT DATE</th>
                 <th>EXPECTED SETTLEMENT</th>
                 <th>DATE INVESTED</th>
                 <th>STATUS</th>
@@ -323,7 +323,7 @@ onMounted(async () => {
                 </td>
                 <td>{{ investment.tier }}</td>
                 <td>{{ formatCurrency(investment.amountInvested) }}</td>
-                <td>{{ investment.fundingProgress }}</td>
+                <td>{{ investment.expectedSettlementDate }}</td>
                 <td>{{ investment.expectedSettlement }}</td>
                 <td>{{ investment.dateInvested }}</td>
                 <td>

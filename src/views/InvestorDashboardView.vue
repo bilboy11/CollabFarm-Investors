@@ -4,13 +4,12 @@ import { RouterLink } from 'vue-router'
 import availableIcon from '@/assets/images/Available.png'
 import lockedIcon from '@/assets/images/Locked.png'
 import disbursedIcon from '@/assets/images/Disbursed.png'
-import { authApi, investmentsApi, walletApi } from '@/services/api'
+import { authApi, investmentsApi } from '@/services/api'
 
 type DashboardPayload = Record<string, unknown>
 
 const dashboardData = ref<DashboardPayload | null>(null)
 const investmentData = ref<DashboardPayload[]>([])
-const walletOverview = ref<DashboardPayload>({})
 const dashboardLoading = ref(true)
 const dashboardError = ref('')
 const allocationColors = ['#1b4d3e', '#3f7a5c', '#6eb489', '#a8d4b8', '#c5cec8']
@@ -39,12 +38,12 @@ function valueFrom(source: DashboardPayload, keys: string[]): unknown {
 }
 
 function metric(keys: string[], fallback: unknown = '—'): unknown {
-  const summary = dashboardFields.value.summary
-  const summaryValue =
-    summary && typeof summary === 'object'
-      ? valueFrom(summary as DashboardPayload, keys)
+  const metrics = dashboardFields.value.metrics
+  const metricsValue =
+    metrics && typeof metrics === 'object'
+      ? valueFrom(metrics as DashboardPayload, keys)
       : undefined
-  return summaryValue ?? valueFrom(dashboardFields.value, keys) ?? fallback
+  return metricsValue ?? valueFrom(dashboardFields.value, keys) ?? fallback
 }
 
 function text(value: unknown, fallback = '—'): string {
@@ -59,9 +58,12 @@ function amount(value: unknown, fallback = '—'): string {
 
 function records(keys: string[]): DashboardPayload[] {
   const value = metric(keys, [])
-  return Array.isArray(value)
-    ? value.filter((item): item is DashboardPayload => Boolean(item) && typeof item === 'object')
-    : []
+  if (Array.isArray(value) && value.length > 0) {
+    return value.filter(
+      (item): item is DashboardPayload => Boolean(item) && typeof item === 'object',
+    )
+  }
+  return []
 }
 
 function recordValue(record: DashboardPayload, keys: string[], fallback = '—'): string {
@@ -80,17 +82,9 @@ function displayDate(value: unknown): string {
     : new Intl.DateTimeFormat('en-NG', { dateStyle: 'medium' }).format(date)
 }
 
-const investorName = computed(() => text(metric(['full_name', 'name', 'first_name']), 'Investor'))
-const totalInvested = computed(() =>
-  amount(metric(['total_invested', 'invested_amount', 'total_investment'])),
+const investorName = computed(() =>
+  text(metric(['investor_name', 'first_name', 'name']), 'Investor'),
 )
-const expectedReturn = computed(() =>
-  amount(metric(['expected_return', 'expected_returns', 'total_expected_return'])),
-)
-const returnRate = computed(() => {
-  const value = metric(['return_rate', 'roi', 'average_roi'])
-  return value === '—' ? value : `${text(value)}${String(value).includes('%') ? '' : '%'}`
-})
 const overdueReturns = computed(() => records(['overdue_returns', 'overdue_investments_list']))
 function extractInvestmentRecords(response: unknown): DashboardPayload[] {
   if (Array.isArray(response))
@@ -112,50 +106,37 @@ function extractInvestmentRecords(response: unknown): DashboardPayload[] {
 
 const recentInvestments = computed(() => {
   const dashboardRecentInvestments = records(['recent_investments'])
-  const source = dashboardRecentInvestments.length ? dashboardRecentInvestments : investmentData.value
+  const source = dashboardRecentInvestments.length
+    ? dashboardRecentInvestments
+    : investmentData.value
   return source.slice(0, 5).map((investment) => {
-    const pkg =
-      investment.package && typeof investment.package === 'object'
-        ? (investment.package as DashboardPayload)
-        : investment.funding_package && typeof investment.funding_package === 'object'
-          ? (investment.funding_package as DashboardPayload)
-          : {}
-    const details =
-      investment.investment_details && typeof investment.investment_details === 'object'
-        ? (investment.investment_details as DashboardPayload)
-        : {}
-    const progress =
-      investment.package_progress && typeof investment.package_progress === 'object'
-        ? (investment.package_progress as DashboardPayload)
-        : {}
-    const settlement =
-      investment.settlement_info && typeof investment.settlement_info === 'object'
-        ? (investment.settlement_info as DashboardPayload)
-        : {}
-    const progressValue = valueFrom(progress, ['progress_percentage']) ?? valueFrom(investment, ['progress_percentage', 'funding_progress'])
     return {
       ...investment,
       id: investment.id ?? investment.investment_id,
-      package_title: investment.package_name ?? investment.package_title ?? pkg.title ?? pkg.name ?? '—',
-      cooperative_name: investment.cooperative_name ?? pkg.cooperative_name ?? '—',
-      package_code: investment.package_code ?? pkg.package_code ?? pkg.package_type ?? pkg.type ?? '—',
-      farming_category: investment.farming_category ?? investment.category ?? pkg.category ?? '—',
-      invested_amount: details.amount_invested ?? investment.amount_invested ?? investment.amount,
-      expected_returns: investment.expected_returns ?? investment.expected_return ?? investment.expected_amount,
-      roi_percentage: investment.roi_percentage ?? investment.roi ?? investment.return_rate,
-      funding_progress: progressValue === undefined ? '—' : `${String(progressValue).replace(/%$/, '')}%`,
-      expected_settlement: displayDate(settlement.expected_settlement_date ?? investment.expected_settlement_date ?? investment.due_date ?? investment.expected_payback_date),
-      date_invested: displayDate(investment.invested_date_str ?? details.date_invested ?? investment.created_at ?? investment.date_invested),
-      status: details.status ?? investment.status ?? investment.investment_status ?? '—',
+      package_title: investment.package_name ?? investment.package_title ?? '—',
+      cooperative_name: investment.cooperative_name ?? '—',
+      package_code: '—',
+      farming_category: investment.farming_category ?? investment.category ?? '—',
+      invested_amount: investment.amount_invested ?? investment.amount,
+      expected_returns: investment.expected_returns ?? investment.expected_return,
+      roi_percentage: investment.roi_percentage ?? investment.roi,
+      funding_progress: '—',
+      expected_settlement: displayDate(investment.due_date ?? investment.expected_settlement_date),
+      date_invested: displayDate(investment.created_at ?? investment.date_invested),
+      status: investment.status ?? investment.investment_status ?? '—',
     }
   })
 })
 const activities = computed(() =>
-  records(['recent_activities', 'recent_activity', 'activities']).slice(0, 4).map((activity) => ({
-    ...activity,
-    time: displayDate(valueFrom(activity, ['timestamp', 'created_at', 'time', 'date'])),
-    detail: valueFrom(activity, ['description', 'detail', 'name']),
-  })),
+  records(['recent_activities', 'recent_activity', 'activities'])
+    .slice(0, 4)
+    .map((activity) => ({
+      ...activity,
+      time: displayDate(valueFrom(activity, ['timestamp', 'created_at', 'time', 'date'])),
+      detail: valueFrom(activity, ['description', 'detail', 'name']),
+      title: valueFrom(activity, ['title', 'action', 'type']),
+      tone: valueFrom(activity, ['activity_type', 'tone']),
+    })),
 )
 const portfolioAllocation = computed(() => {
   const value = valueFrom(dashboardFields.value, ['portfolio_allocation'])
@@ -166,7 +147,9 @@ const portfolioAllocation = computed(() => {
 const allocation = computed(() => {
   const breakdown = valueFrom(portfolioAllocation.value, ['breakdown'])
   const entries = Array.isArray(breakdown)
-    ? breakdown.filter((entry): entry is DashboardPayload => Boolean(entry) && typeof entry === 'object')
+    ? breakdown.filter(
+        (entry): entry is DashboardPayload => Boolean(entry) && typeof entry === 'object',
+      )
     : []
   return entries.map((entry, index) => ({
     label: recordValue(entry, ['farming_category', 'label', 'crop', 'crop_type', 'name']),
@@ -187,7 +170,9 @@ function compactCurrency(value: unknown): string {
   return `₦ ${numericValue.toLocaleString('en-NG')}`
 }
 
-const portfolioValue = computed(() => compactCurrency(valueFrom(portfolioAllocation.value, ['total_portfolio_value'])))
+const portfolioValue = computed(() =>
+  compactCurrency(valueFrom(portfolioAllocation.value, ['total_portfolio_value'])),
+)
 const allocationGradient = computed(() => {
   const total = allocation.value.reduce((sum, item) => sum + item.value, 0)
   if (!total) return 'conic-gradient(#e8ebe7 0deg 360deg)'
@@ -202,43 +187,38 @@ const allocationGradient = computed(() => {
 })
 const kpis = computed(() => [
   {
-    id: 'available',
-    label: 'Available Balance',
-    value: amount(valueFrom(walletOverview.value, ['available_balance'])),
+    id: 'invested',
+    label: 'Total Invested Amount',
+    value: amount(metric(['total_invested_amount', 'total_invested', 'invested_amount'])),
     icon: availableIcon,
     tone: 'wallet',
-    action: true,
   },
   {
-    id: 'locked',
-    label: 'Locked Funds',
-    value: amount(valueFrom(walletOverview.value, ['locked_funds'])),
+    id: 'expected',
+    label: 'Total Expected Returns',
+    value: amount(metric(['total_expected_returns', 'expected_return', 'expected_returns'])),
     icon: lockedIcon,
     tone: 'wallet',
   },
   {
-    id: 'disbursed',
-    label: 'Disbursed Funds',
-    value: amount(valueFrom(walletOverview.value, ['actively_distributed'])),
+    id: 'active',
+    label: 'Active Investments Count',
+    value: text(metric(['active_investments_count', 'active_investments', 'active_count']), '0'),
     icon: disbursedIcon,
     tone: 'wallet',
   },
   {
     id: 'overdue',
-    label: 'Overdue Returns',
-    value: text(
-      metric(['overdue_count', 'overdue_investment_count']),
-      String(overdueReturns.value.length),
-    ),
+    label: 'Overdue Investments Count',
+    value: text(metric(['overdue_investments_count', 'overdue_count']), '0'),
     tone: 'alert',
   },
 ])
 
 onMounted(async () => {
-  const [dashboardResult, investmentsResult, walletResult] = await Promise.allSettled([
+  const [dashboardResult, investmentsResult] = await Promise.allSettled([
     authApi.getInvestorDashboard(),
     investmentsApi.list(),
-    walletApi.overview(),
   ])
   if (dashboardResult.status === 'fulfilled') {
     dashboardData.value = dashboardResult.value as DashboardPayload
@@ -255,11 +235,6 @@ onMounted(async () => {
   }
   if (investmentsResult.status === 'fulfilled') {
     investmentData.value = extractInvestmentRecords(investmentsResult.value)
-  }
-  if (walletResult.status === 'fulfilled') {
-    const result = walletResult.value as DashboardPayload
-    walletOverview.value =
-      result.data && typeof result.data === 'object' ? (result.data as DashboardPayload) : result
   }
   dashboardLoading.value = false
 })
@@ -289,9 +264,11 @@ onMounted(async () => {
                 <p class="kpi__value">{{ kpi.value }}</p>
               </div>
             </div>
-            <span v-if="kpi.tone === 'alert' && overdueReturns.length" class="kpi__badge" aria-hidden="true">!</span>
-            <RouterLink v-if="kpi.action" class="kpi__action" to="/dashboard/wallet"
-              >View Wallet <span aria-hidden="true">→</span></RouterLink
+            <span
+              v-if="kpi.tone === 'alert' && overdueReturns.length"
+              class="kpi__badge"
+              aria-hidden="true"
+              >!</span
             >
           </article>
         </section>
@@ -307,25 +284,17 @@ onMounted(async () => {
               </h3>
             </header>
             <ul class="overdue-list">
-              <li v-for="item in overdueReturns" :key="String(item.id ?? item.investment_id ?? item.package_name)">
-                <img
-                  v-if="valueFrom(item, ['avatar', 'avatar_url', 'image'])"
-                  :src="text(valueFrom(item, ['avatar', 'avatar_url', 'image']))"
-                  alt=""
-                />
+              <li
+                v-for="item in overdueReturns"
+                :key="String(item.id ?? item.investment_id ?? item.package_name)"
+              >
                 <div class="overdue-list__meta">
-                  <strong>{{
-                    recordValue(item, ['farmer_name', 'investor_name', 'name', 'full_name'])
-                  }}</strong
-                  ><span>{{ recordValue(item, ['crop', 'crop_type']) }}</span>
+                  <strong>{{ recordValue(item, ['package_name']) }}</strong>
+                  <span>{{ recordValue(item, ['cooperative_name']) }}</span>
                 </div>
                 <div class="overdue-list__amount">
-                  <strong
-                    >{{
-                      amount(valueFrom(item, ['expected_return', 'amount', 'return_amount']))
-                    }}
-                    Expected Return</strong
-                  ><time>{{ recordValue(item, ['due_date', 'due']) }}</time>
+                  <strong>{{ amount(valueFrom(item, ['amount'])) }}</strong>
+                  <time>{{ displayDate(valueFrom(item, ['due_date'])) }}</time>
                 </div>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path
@@ -345,7 +314,9 @@ onMounted(async () => {
           <article class="panel panel--allocation">
             <header class="panel__head panel__head--split">
               <h3>Investment by Farming Category</h3>
-              <RouterLink class="allocation-details" to="/dashboard/investments">View Details</RouterLink>
+              <RouterLink class="allocation-details" to="/dashboard/investments"
+                >View Details</RouterLink
+              >
             </header>
             <div class="allocation">
               <div class="donut" :style="{ background: allocationGradient }" aria-hidden="true">
@@ -357,7 +328,10 @@ onMounted(async () => {
                 <li v-for="item in allocation" :key="item.label">
                   <span class="legend__dot" :style="{ background: item.color }"></span
                   ><span class="legend__label">{{ item.label }}</span
-                  ><strong>{{ item.amount === null ? '' : compactCurrency(item.amount) }}{{ item.amount === null ? '' : ' ' }}({{ item.value }}%)</strong>
+                  ><strong
+                    >{{ item.amount === null ? '' : compactCurrency(item.amount)
+                    }}{{ item.amount === null ? '' : ' ' }}({{ item.value }}%)</strong
+                  >
                 </li>
                 <li v-if="!allocation.length">No farming category data.</li>
               </ul>
@@ -401,7 +375,11 @@ onMounted(async () => {
                       <div class="expected-cell">
                         <span>{{ amount(valueFrom(item, ['expected_returns'])) }}</span>
                         <small v-if="valueFrom(item, ['roi_percentage']) !== undefined">
-                          {{ recordValue(item, ['roi_percentage']) }}{{ String(valueFrom(item, ['roi_percentage'])).includes('%') ? '' : '%' }} ROI
+                          {{ recordValue(item, ['roi_percentage'])
+                          }}{{
+                            String(valueFrom(item, ['roi_percentage'])).includes('%') ? '' : '%'
+                          }}
+                          ROI
                         </small>
                       </div>
                     </td>
@@ -579,6 +557,32 @@ onMounted(async () => {
   border: var(--stroke-05) solid var(--color-border);
   border-radius: 16px;
   background: #fff;
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.kpi:nth-child(1) {
+  animation-delay: 0.1s;
+}
+.kpi:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.kpi:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.kpi:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .kpi--featured {
@@ -660,6 +664,30 @@ onMounted(async () => {
   flex-direction: column;
   border: var(--stroke-05) solid var(--color-border);
   background: #fff;
+  animation: fadeIn 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.panel--overdue {
+  animation-delay: 0.5s;
+}
+.panel--allocation {
+  animation-delay: 0.6s;
+}
+.panel--farmers {
+  animation-delay: 0.7s;
+}
+.panel--activity {
+  animation-delay: 0.8s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .panel__head h3 {
@@ -768,7 +796,7 @@ onMounted(async () => {
 
 .overdue-list li {
   display: grid;
-  grid-template-columns: 44px 1fr auto 16px;
+  grid-template-columns: 1fr auto 16px;
   align-items: center;
   gap: 12px;
   padding: 12px;
@@ -781,13 +809,6 @@ onMounted(async () => {
   display: block;
   background: transparent;
   color: var(--color-ink-soft);
-}
-
-.overdue-list img {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
 }
 
 .overdue-list__meta,
@@ -834,6 +855,19 @@ onMounted(async () => {
   width: 140px;
   height: 140px;
   border-radius: 50%;
+  animation: scaleIn 0.8s ease-out forwards;
+  transform: scale(0);
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .donut__hole {
@@ -950,13 +984,27 @@ table {
   text-overflow: ellipsis;
 }
 
-.investment-table th:nth-child(1) { width: 18%; }
-.investment-table th:nth-child(2) { width: 18%; }
-.investment-table th:nth-child(3) { width: 15%; }
-.investment-table th:nth-child(4) { width: 13%; }
-.investment-table th:nth-child(5) { width: 16%; }
-.investment-table th:nth-child(6) { width: 10%; }
-.investment-table th:nth-child(7) { width: 10%; }
+.investment-table th:nth-child(1) {
+  width: 18%;
+}
+.investment-table th:nth-child(2) {
+  width: 18%;
+}
+.investment-table th:nth-child(3) {
+  width: 15%;
+}
+.investment-table th:nth-child(4) {
+  width: 13%;
+}
+.investment-table th:nth-child(5) {
+  width: 16%;
+}
+.investment-table th:nth-child(6) {
+  width: 10%;
+}
+.investment-table th:nth-child(7) {
+  width: 10%;
+}
 
 .package-cell {
   display: flex;
@@ -1329,13 +1377,27 @@ td {
     content: none;
   }
 
-  .panel--farmers .investment-table tbody td:nth-child(1)::before { content: 'Package'; }
-  .panel--farmers .investment-table tbody td:nth-child(2)::before { content: 'Cooperative'; }
-  .panel--farmers .investment-table tbody td:nth-child(3)::before { content: 'Category'; }
-  .panel--farmers .investment-table tbody td:nth-child(4)::before { content: 'Invested'; }
-  .panel--farmers .investment-table tbody td:nth-child(5)::before { content: 'Expected return'; }
-  .panel--farmers .investment-table tbody td:nth-child(6)::before { content: 'Due date'; }
-  .panel--farmers .investment-table tbody td:nth-child(7)::before { content: 'Status'; }
+  .panel--farmers .investment-table tbody td:nth-child(1)::before {
+    content: 'Package';
+  }
+  .panel--farmers .investment-table tbody td:nth-child(2)::before {
+    content: 'Cooperative';
+  }
+  .panel--farmers .investment-table tbody td:nth-child(3)::before {
+    content: 'Category';
+  }
+  .panel--farmers .investment-table tbody td:nth-child(4)::before {
+    content: 'Invested';
+  }
+  .panel--farmers .investment-table tbody td:nth-child(5)::before {
+    content: 'Expected return';
+  }
+  .panel--farmers .investment-table tbody td:nth-child(6)::before {
+    content: 'Due date';
+  }
+  .panel--farmers .investment-table tbody td:nth-child(7)::before {
+    content: 'Status';
+  }
 
   .panel--farmers .investment-table .package-cell {
     min-width: 0;
@@ -1345,7 +1407,6 @@ td {
   .panel--farmers .investment-table .package-cell span {
     overflow-wrap: anywhere;
   }
-
 }
 
 .dashboard-wrapper {

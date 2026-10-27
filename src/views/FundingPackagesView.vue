@@ -91,18 +91,18 @@ onMounted(async () => {
     const apiPackages = extractPackages(await packagesApi.list())
 
     packages.value = apiPackages.map((record) => ({
-        id: String(record.id ?? `${record.title}-${record.created_at}`),
-        category: displayCategory(record.category),
-        status: String(record.status ?? '—')
-          .toLowerCase()
-          .replace(/\b\w/g, (letter) => letter.toUpperCase()),
-        title: String(record.title ?? 'Untitled package'),
-        description: String(record.short_description ?? ''),
-        amount: numberFrom(record.fund_amount),
-        tenureMonths: numberFrom(record.tenure_months),
-        expectedRoi: numberFrom(record.expected_roi),
-        cooperativeShare: numberFrom(record.cooperative_share),
-      }))
+      id: String(record.id ?? `${record.title}-${record.created_at}`),
+      category: displayCategory(record.category),
+      status: String(record.status ?? '—')
+        .toLowerCase()
+        .replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      title: String(record.title ?? 'Untitled package'),
+      description: String(record.short_description ?? ''),
+      amount: numberFrom(record.fund_amount),
+      tenureMonths: numberFrom(record.tenure_months),
+      expectedRoi: numberFrom(record.expected_roi),
+      cooperativeShare: numberFrom(record.cooperative_share),
+    }))
   } catch (error) {
     const err = error as {
       response?: { data?: { detail?: string; message?: string } }
@@ -371,10 +371,31 @@ function viewPackage(id: string | number) {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 24px;
+  padding: 20px;
   border: var(--stroke-05) solid var(--color-border);
-  border-radius: var(--radius-7);
+  border-radius: 16px;
   background: #fff;
+  animation: fadeInUp 0.5s ease-out forwards;
+  opacity: 0;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.package-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .package-card__header {
