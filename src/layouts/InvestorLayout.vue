@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import logoSrc from '@/assets/images/Logo.png'
 import { API_BASE_URL, profileApi } from '@/services/api'
+import { stopSessionInactivityTracking } from '@/services/sessionInactivity'
 
 const route = useRoute()
 const router = useRouter()
@@ -54,6 +55,7 @@ function closeMenu() {
 }
 
 function logout() {
+  stopSessionInactivityTracking()
   localStorage.removeItem('access_token')
   accountMenuOpen.value = false
   router.replace('/login')

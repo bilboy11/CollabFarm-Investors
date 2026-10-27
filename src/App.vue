@@ -1,11 +1,26 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { RouterView, useRoute } from 'vue-router'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import ChatBot from '@/components/ChatBot.vue'
+import { setSessionInactivityActive, startSessionInactivityTracking } from '@/services/sessionInactivity'
 
 const route = useRoute()
+const router = useRouter()
 const hideHeader = computed(() => Boolean(route.meta.hideHeader))
+let stopInactivityTracking: (() => void) | undefined
+
+onMounted(() => {
+  stopInactivityTracking = startSessionInactivityTracking(router)
+  setSessionInactivityActive(router, Boolean(localStorage.getItem('access_token')))
+})
+
+watch(
+  () => route.fullPath,
+  () => setSessionInactivityActive(router, Boolean(localStorage.getItem('access_token'))),
+)
+
+onUnmounted(() => stopInactivityTracking?.())
 </script>
 
 <template>
