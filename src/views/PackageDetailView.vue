@@ -11,6 +11,8 @@ const showInvestModal = ref(false)
 const investError = ref('')
 const investSuccess = ref('')
 const isInvesting = ref(false)
+const investmentAmount = ref('')
+const amountError = ref('')
 
 const packageData = ref({
   id: '',
@@ -62,7 +64,17 @@ function normalizeIncluded(value: unknown): string[] {
   if (!value || typeof value !== 'object') return []
 
   const record = value as Record<string, unknown>
-  const preferredFields = ['title', 'name', 'label', 'description', 'text', 'value', 'benefit', 'item', 'detail']
+  const preferredFields = [
+    'title',
+    'name',
+    'label',
+    'description',
+    'text',
+    'value',
+    'benefit',
+    'item',
+    'detail',
+  ]
   for (const field of preferredFields) {
     if (field in record) return normalizeIncluded(record[field])
   }
@@ -73,26 +85,61 @@ function openInvestModal() {
   showInvestModal.value = true
   investError.value = ''
   investSuccess.value = ''
+  investmentAmount.value = ''
+  amountError.value = ''
 }
 
 function closeInvestModal() {
   showInvestModal.value = false
   investError.value = ''
   isInvesting.value = false
+  investmentAmount.value = ''
+  amountError.value = ''
+}
+
+function validateAmount(): boolean {
+  const amount = Number(investmentAmount.value)
+  const minimum = packageData.value.amount
+
+  if (!investmentAmount.value || isNaN(amount)) {
+    amountError.value = 'Please enter a valid amount.'
+    return false
+  }
+
+  if (amount <= 0) {
+    amountError.value = 'Amount must be greater than 0.'
+    return false
+  }
+
+  if (minimum !== null && amount < minimum) {
+    amountError.value = `Minimum investment amount is ${formatCurrency(minimum)}`
+    return false
+  }
+
+  amountError.value = ''
+  return true
 }
 
 async function invest() {
+  if (!validateAmount()) {
+    return
+  }
+
   try {
     isInvesting.value = true
     investError.value = ''
     if (!packageData.value.id) {
       throw new Error('This package is missing its ID.')
     }
-    await investmentsApi.invest(packageData.value.id)
+    const amount = Number(investmentAmount.value)
+    await investmentsApi.invest(packageData.value.id, amount)
     closeInvestModal()
     investSuccess.value = 'Your investment was created successfully.'
   } catch (error) {
-    const err = error as { response?: { data?: { detail?: string; message?: string } }; message?: string }
+    const err = error as {
+      response?: { data?: { detail?: string; message?: string } }
+      message?: string
+    }
     investError.value =
       err.response?.data?.detail ||
       err.response?.data?.message ||
@@ -107,7 +154,8 @@ onMounted(async () => {
   try {
     const packageId = route.params.id as string
     const response = await packagesApi.detail(packageId)
-    const outer = response && typeof response === 'object' ? (response as Record<string, unknown>) : {}
+    const outer =
+      response && typeof response === 'object' ? (response as Record<string, unknown>) : {}
     const raw = (outer.data ?? outer.package ?? outer) as Record<string, unknown>
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
       throw new Error('Package details were not returned by the server.')
@@ -131,7 +179,9 @@ onMounted(async () => {
       farmers: String(raw.farmers_count ?? raw.farmer_count ?? '—'),
       locations: String(raw.locations ?? raw.location ?? '—'),
       closingDate: String(raw.expected_payback_date ?? raw.closing_date ?? '—'),
-      fullDescription: String(raw.full_description ?? raw.description ?? raw.short_description ?? '—'),
+      fullDescription: String(
+        raw.full_description ?? raw.description ?? raw.short_description ?? '—',
+      ),
       farmingType: String(raw.farming_type ?? raw.category ?? '—'),
       farmingCycle: tenure !== null ? `${tenure} Months` : String(raw.farming_cycle ?? '—'),
       farmersCount: farmerCount,
@@ -139,7 +189,10 @@ onMounted(async () => {
       whatsIncluded: normalizeIncluded(included),
     }
   } catch (error) {
-    const err = error as { response?: { data?: { detail?: string; message?: string } }; message?: string }
+    const err = error as {
+      response?: { data?: { detail?: string; message?: string } }
+      message?: string
+    }
     errorMessage.value =
       err.response?.data?.detail ||
       err.response?.data?.message ||
@@ -158,7 +211,9 @@ onMounted(async () => {
     <div v-else>
       <div v-if="investSuccess" class="investment-success" role="status">
         <span>{{ investSuccess }}</span>
-        <button type="button" aria-label="Dismiss success message" @click="investSuccess = ''">×</button>
+        <button type="button" aria-label="Dismiss success message" @click="investSuccess = ''">
+          ×
+        </button>
       </div>
 
       <!-- Breadcrumb -->
@@ -274,20 +329,38 @@ onMounted(async () => {
           <button class="modal-close" @click="closeInvestModal" aria-label="Close modal">✕</button>
         </div>
         <div class="modal-body">
-          <p class="modal-subtitle">Confirm your investment in this package.</p>
+          <p class="modal-subtitle">Enter the amount you want to invest in this package.</p>
           <div class="investment-summary">
             <span class="summary-label">Package</span>
             <span class="summary-value">{{ packageData.title }}</span>
           </div>
           <div class="investment-summary">
-            <span class="summary-label">Funding Amount</span>
+            <span class="summary-label">Minimum Investment</span>
             <span class="summary-value">{{ formatCurrency(packageData.amount) }}</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="investment-amount">Investment Amount (NGN)</label>
+            <input
+              id="investment-amount"
+              v-model="investmentAmount"
+              type="number"
+              class="form-input"
+              :min="packageData.amount ?? 0"
+              :step="1000"
+              placeholder="Enter amount"
+              @input="amountError = ''"
+            />
+            <p v-if="amountError" class="form-error">{{ amountError }}</p>
           </div>
           <p v-if="investError" class="modal-error">{{ investError }}</p>
         </div>
         <div class="modal-footer">
           <button class="btn btn--cancel" @click="closeInvestModal">Cancel</button>
-          <button class="btn btn--invest" @click="invest" :disabled="isInvesting">
+          <button
+            class="btn btn--invest"
+            @click="invest"
+            :disabled="isInvesting || !investmentAmount"
+          >
             {{ isInvesting ? 'Processing...' : 'Invest' }}
           </button>
         </div>
@@ -622,6 +695,47 @@ onMounted(async () => {
   color: #c33;
   font-family: var(--font-body);
   font-size: 0.9rem;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d7ddd8;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  border-color: var(--color-green-700);
+}
+
+.form-input::placeholder {
+  color: var(--color-ink-soft);
+}
+
+.form-error {
+  margin: 6px 0 0 0;
+  color: #c33;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
 }
 
 .modal-footer {

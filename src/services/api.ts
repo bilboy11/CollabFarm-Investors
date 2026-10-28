@@ -180,13 +180,17 @@ export const investmentsApi = {
     return response.data
   },
 
-  invest: async (packageId: string) => {
+  invest: async (packageId: string, amount: number) => {
     const token = localStorage.getItem('access_token')
     if (!token) throw new Error('Your session has expired. Please sign in again.')
 
-    const response = await api.post(`/investments/${encodeURIComponent(packageId)}`, {}, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await api.post(
+      `/investments/${encodeURIComponent(packageId)}`,
+      { amount },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    )
     return response.data
   },
 }

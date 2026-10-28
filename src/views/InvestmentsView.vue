@@ -35,6 +35,13 @@ interface Investment {
   locations: string
   expectedSettlementDate: string
   expectedSettlementAmount: number | null
+  investmentProgressAmount: number | null
+  investmentExpectedSettlementAmount: number | null
+  investmentExpectedProfit: number | null
+  investmentElapsedDays: number | null
+  investmentRemainingDays: number | null
+  investmentExpectedPayoutToDate: number | null
+  investmentExpectedProfitToDate: number | null
 }
 
 const selectedInvestment = ref<Investment | null>(null)
@@ -56,11 +63,14 @@ function valueOf(record: InvestmentRecord, keys: string[]): unknown {
 }
 
 function asRecord(value: unknown): InvestmentRecord {
-  return value && typeof value === 'object' ? value as InvestmentRecord : {}
+  return value && typeof value === 'object' ? (value as InvestmentRecord) : {}
 }
 
 function extractInvestments(response: unknown): InvestmentRecord[] {
-  if (Array.isArray(response)) return response.filter((item): item is InvestmentRecord => Boolean(item) && typeof item === 'object')
+  if (Array.isArray(response))
+    return response.filter(
+      (item): item is InvestmentRecord => Boolean(item) && typeof item === 'object',
+    )
   if (!response || typeof response !== 'object') return []
   const payload = response as InvestmentRecord
   for (const key of ['investments', 'items', 'results', 'data']) {
@@ -84,70 +94,191 @@ function numberValue(record: InvestmentRecord, keys: string[]): number | null {
 function formatDate(value: unknown): string {
   if (!value) return '—'
   const date = new Date(String(value))
-  return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat('en-NG', { dateStyle: 'medium' }).format(date)
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : new Intl.DateTimeFormat('en-NG', { dateStyle: 'medium' }).format(date)
 }
 
 function mapInvestment(record: InvestmentRecord): Investment {
   const pkg = asRecord(record.package ?? record.funding_package)
   const investmentDetails = asRecord(record.investment_details)
   const packageProgress = asRecord(record.package_progress)
+  const investmentProgress = asRecord(record.investment_progress)
   const settlementInfo = asRecord(record.settlement_info)
   const rawId = valueOf(record, ['id', 'investment_id', 'uuid'])
-  const rawPackageId = valueOf(pkg, ['id', 'package_id', 'uuid']) ?? valueOf(record, ['package_id', 'packageId', 'funding_package_id'])
-  const amount = numberValue(investmentDetails, ['amount_invested']) ?? numberValue(record, ['amount_invested', 'investment_amount', 'amount'])
-  const raised = numberValue(packageProgress, ['amount_raised']) ?? numberValue(pkg, ['amount_raised', 'raised_amount', 'total_raised']) ?? numberValue(record, ['amount_raised', 'raised_amount'])
-  const target = numberValue(packageProgress, ['target_amount']) ?? numberValue(pkg, ['fund_amount', 'target_amount']) ?? numberValue(record, ['target_amount', 'package_amount'])
-  const categoryValue = String(valueOf(pkg, ['category']) ?? valueOf(record, ['farming_category', 'category']) ?? '')
-  const category = categoryValue.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
-  const progressValue = numberValue(record, ['funding_progress_percentage']) ?? numberValue(packageProgress, ['progress_percentage']) ?? numberValue(record, ['funding_progress', 'progress'])
-  const expectedDate = valueOf(settlementInfo, ['expected_settlement_date']) ?? valueOf(pkg, ['expected_payback_date', 'expected_settlement_date']) ?? valueOf(record, ['expected_settlement_date', 'expected_payback_date', 'due_date'])
-  const expectedSettlementAmount = numberValue(settlementInfo, ['expected_settlement_amount']) ?? numberValue(record, ['expected_settlement', 'expected_settlement_amount'])
-  const dateInvested = valueOf(record, ['invested_date_str']) ?? valueOf(investmentDetails, ['date_invested']) ?? valueOf(record, ['created_at', 'date_invested', 'investment_date'])
+  const rawPackageId =
+    valueOf(pkg, ['id', 'package_id', 'uuid']) ??
+    valueOf(record, ['package_id', 'packageId', 'funding_package_id'])
+  const amount =
+    numberValue(investmentDetails, ['amount_invested']) ??
+    numberValue(record, ['amount_invested', 'investment_amount', 'amount'])
+  const raised =
+    numberValue(packageProgress, ['amount_raised']) ??
+    numberValue(pkg, ['amount_raised', 'raised_amount', 'total_raised']) ??
+    numberValue(record, ['amount_raised', 'raised_amount'])
+  const target =
+    numberValue(packageProgress, ['target_amount']) ??
+    numberValue(pkg, ['fund_amount', 'target_amount']) ??
+    numberValue(record, ['target_amount', 'package_amount'])
+  const categoryValue = String(
+    valueOf(pkg, ['category']) ?? valueOf(record, ['farming_category', 'category']) ?? '',
+  )
+  const category = categoryValue
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+  const progressValue =
+    numberValue(investmentProgress, ['progress_percentage']) ??
+    numberValue(record, ['funding_progress_percentage']) ??
+    numberValue(packageProgress, ['progress_percentage']) ??
+    numberValue(record, ['funding_progress', 'progress'])
+  const expectedDate =
+    valueOf(settlementInfo, ['expected_settlement_date']) ??
+    valueOf(pkg, ['expected_payback_date', 'expected_settlement_date']) ??
+    valueOf(record, ['expected_settlement_date', 'expected_payback_date', 'due_date'])
+  const expectedSettlementAmount =
+    numberValue(settlementInfo, ['expected_settlement_amount']) ??
+    numberValue(record, ['expected_settlement', 'expected_settlement_amount'])
+  const dateInvested =
+    valueOf(record, ['invested_date_str']) ??
+    valueOf(investmentDetails, ['date_invested']) ??
+    valueOf(record, ['created_at', 'date_invested', 'investment_date'])
   const investmentCode = valueOf(investmentDetails, ['investment_id_code'])
   return {
     id: (rawId as string | number | undefined) ?? '—',
-    packageId: typeof rawPackageId === 'string' || typeof rawPackageId === 'number' ? rawPackageId : null,
-    packageName: String(valueOf(pkg, ['title', 'name']) ?? valueOf(record, ['package_title', 'package_name', 'title']) ?? '—'),
+    packageId:
+      typeof rawPackageId === 'string' || typeof rawPackageId === 'number' ? rawPackageId : null,
+    packageName: String(
+      valueOf(pkg, ['title', 'name']) ??
+        valueOf(record, ['package_title', 'package_name', 'title']) ??
+        '—',
+    ),
     category: category || '—',
-    tier: String(valueOf(pkg, ['package_type', 'type']) ?? valueOf(record, ['package_code', 'package_type', 'tier']) ?? '—').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+    tier: String(
+      valueOf(pkg, ['package_type', 'type']) ??
+        valueOf(record, ['package_code', 'package_type', 'tier']) ??
+        '—',
+    ).replace(/\b\w/g, (letter) => letter.toUpperCase()),
     amountInvested: amount,
     progressPercentage: progressValue,
-    fundingProgress: progressValue !== null ? `${progressValue}%` : raised !== null && target ? `${Math.round((raised / target) * 100)}%` : '—',
-    expectedSettlement: expectedSettlementAmount !== null ? formatCurrency(expectedSettlementAmount) : formatDate(expectedDate),
+    fundingProgress:
+      progressValue !== null
+        ? `${progressValue}%`
+        : raised !== null && target
+          ? `${Math.round((raised / target) * 100)}%`
+          : '—',
+    expectedSettlement:
+      expectedSettlementAmount !== null
+        ? formatCurrency(expectedSettlementAmount)
+        : formatDate(expectedDate),
     dateInvested: formatDate(dateInvested),
-    status: String(valueOf(investmentDetails, ['status']) ?? valueOf(record, ['status', 'investment_status']) ?? '—').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()),
+    status: String(
+      valueOf(investmentDetails, ['status']) ??
+        valueOf(record, ['status', 'investment_status']) ??
+        '—',
+    )
+      .toLowerCase()
+      .replace(/\b\w/g, (letter) => letter.toUpperCase()),
     investmentId: String(investmentCode ?? rawId ?? '—'),
-    transactionRef: String(valueOf(investmentDetails, ['transaction_reference']) ?? valueOf(record, ['transaction_reference', 'transaction_ref', 'reference']) ?? '—'),
+    transactionRef: String(
+      valueOf(investmentDetails, ['transaction_reference']) ??
+        valueOf(record, ['transaction_reference', 'transaction_ref', 'reference']) ??
+        '—',
+    ),
     raised,
     targetAmount: target,
-    farmersSupported: String(valueOf(packageProgress, ['farmers_supported']) ?? valueOf(pkg, ['farmers_supported', 'farmer_count']) ?? '—'),
-    farmSize: String(valueOf(packageProgress, ['total_farm_size_ha']) ?? valueOf(pkg, ['farm_size', 'total_farm_size']) ?? '—'),
-    locations: String(valueOf(packageProgress, ['locations_count']) ?? valueOf(pkg, ['location_count', 'locations']) ?? '—'),
+    farmersSupported: String(
+      valueOf(packageProgress, ['farmers_supported']) ??
+        valueOf(pkg, ['farmers_supported', 'farmer_count']) ??
+        '—',
+    ),
+    farmSize: String(
+      valueOf(packageProgress, ['total_farm_size_ha']) ??
+        valueOf(pkg, ['farm_size', 'total_farm_size']) ??
+        '—',
+    ),
+    locations: String(
+      valueOf(packageProgress, ['locations_count']) ??
+        valueOf(pkg, ['location_count', 'locations']) ??
+        '—',
+    ),
     expectedSettlementDate: formatDate(expectedDate),
     expectedSettlementAmount,
+    investmentProgressAmount: numberValue(investmentProgress, ['amount_invested']),
+    investmentExpectedSettlementAmount: numberValue(investmentProgress, [
+      'expected_settlement_amount',
+    ]),
+    investmentExpectedProfit: numberValue(investmentProgress, ['expected_profit']),
+    investmentElapsedDays: numberValue(investmentProgress, ['elapsed_days']),
+    investmentRemainingDays: numberValue(investmentProgress, ['remaining_days']),
+    investmentExpectedPayoutToDate: numberValue(investmentProgress, ['expected_payout_to_date']),
+    investmentExpectedProfitToDate: numberValue(investmentProgress, ['expected_profit_to_date']),
   }
 }
 
 function formatCurrency(amount: number | null): string {
   if (amount === null) return '—'
-  return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(amount)
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(amount)
 }
 
 const summaryCards = computed(() => {
-  const sum = (records: Investment[]) => records.reduce((total, record) => total + (record.amountInvested ?? 0), 0)
-  const active = investments.value.filter((investment) => investment.status.toLowerCase() === 'active')
-  const pending = investments.value.filter((investment) => investment.status.toLowerCase() === 'pending')
-  const packages = new Map(investments.value.filter((investment) => investment.targetAmount !== null).map((investment) => [investment.packageName, investment.targetAmount as number]))
+  const sum = (records: Investment[]) =>
+    records.reduce((total, record) => total + (record.amountInvested ?? 0), 0)
+  const active = investments.value.filter(
+    (investment) => investment.status.toLowerCase() === 'active',
+  )
+  const pending = investments.value.filter(
+    (investment) => investment.status.toLowerCase() === 'pending',
+  )
+  const packages = new Map(
+    investments.value
+      .filter((investment) => investment.targetAmount !== null)
+      .map((investment) => [investment.packageName, investment.targetAmount as number]),
+  )
   return [
-    { id: 'total-invested', label: 'Total Invested', value: formatCurrency(numberValue(investmentSummary.value, ['total_invested']) ?? sum(investments.value)), icon: totalIcon },
-    { id: 'active-investments', label: 'Active Investments', value: String(numberValue(investmentSummary.value, ['active_investments']) ?? active.length), icon: activeIcon },
-    { id: 'packages-funded', label: 'Packages Funded', value: String(numberValue(investmentSummary.value, ['packages_funded']) ?? packages.size), icon: disbursedIcon },
-    { id: 'pending-settlement', label: 'Pending Settlement', value: formatCurrency(numberValue(investmentSummary.value, ['pending_settlement']) ?? sum(pending)), icon: pendingIcon },
+    {
+      id: 'total-invested',
+      label: 'Total Invested',
+      value: formatCurrency(
+        numberValue(investmentSummary.value, ['total_invested']) ?? sum(investments.value),
+      ),
+      icon: totalIcon,
+    },
+    {
+      id: 'active-investments',
+      label: 'Active Investments',
+      value: String(numberValue(investmentSummary.value, ['active_investments']) ?? active.length),
+      icon: activeIcon,
+    },
+    {
+      id: 'packages-funded',
+      label: 'Packages Funded',
+      value: String(numberValue(investmentSummary.value, ['packages_funded']) ?? packages.size),
+      icon: disbursedIcon,
+    },
+    {
+      id: 'pending-settlement',
+      label: 'Pending Settlement',
+      value: formatCurrency(
+        numberValue(investmentSummary.value, ['pending_settlement']) ?? sum(pending),
+      ),
+      icon: pendingIcon,
+    },
   ]
 })
 
 const statusOptions = ['All Status', 'Active', 'Inactive', 'Pending', 'Rejected']
-const packageOptions = ['All Packages', 'Crop Farming', 'Fishery', 'Mixed Farming', 'Livestock', 'Poultry']
+const packageOptions = [
+  'All Packages',
+  'Crop Farming',
+  'Fishery',
+  'Mixed Farming',
+  'Livestock',
+  'Poultry',
+]
 const sortOptions = ['Newest', 'Oldest', 'Marked as Repaid', 'Flag Loan', 'Extended Due Date']
 
 const currentPage = ref(1)
@@ -155,15 +286,29 @@ const itemsPerPage = 10
 const totalItems = computed(() => filteredInvestments.value.length)
 const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage))
 
-const filteredInvestments = computed(() => investments.value.filter((investment) => {
-  const query = searchQuery.value.trim().toLowerCase()
-  const matchesQuery = !query || `${investment.packageName} ${investment.category} ${investment.investmentId}`.toLowerCase().includes(query)
-  const matchesStatus = statusFilter.value === 'All Status' || investment.status.toLowerCase() === statusFilter.value.toLowerCase()
-  const matchesPackage = packageFilter.value === 'All Packages' || investment.category === packageFilter.value
-  return matchesQuery && matchesStatus && matchesPackage
-}))
+const filteredInvestments = computed(() =>
+  investments.value.filter((investment) => {
+    const query = searchQuery.value.trim().toLowerCase()
+    const matchesQuery =
+      !query ||
+      `${investment.packageName} ${investment.category} ${investment.investmentId}`
+        .toLowerCase()
+        .includes(query)
+    const matchesStatus =
+      statusFilter.value === 'All Status' ||
+      investment.status.toLowerCase() === statusFilter.value.toLowerCase()
+    const matchesPackage =
+      packageFilter.value === 'All Packages' || investment.category === packageFilter.value
+    return matchesQuery && matchesStatus && matchesPackage
+  }),
+)
 
-const paginatedInvestments = computed(() => filteredInvestments.value.slice((currentPage.value - 1) * itemsPerPage, currentPage.value * itemsPerPage))
+const paginatedInvestments = computed(() =>
+  filteredInvestments.value.slice(
+    (currentPage.value - 1) * itemsPerPage,
+    currentPage.value * itemsPerPage,
+  ),
+)
 
 function getStatusClass(status: string): string {
   const statusMap: Record<string, string> = {
@@ -190,8 +335,15 @@ async function selectInvestment(investment: Investment) {
       }
     }
   } catch (error) {
-    const err = error as { response?: { data?: { detail?: string; message?: string } }; message?: string }
-    errorMessage.value = err.response?.data?.detail || err.response?.data?.message || err.message || 'Unable to load investment details.'
+    const err = error as {
+      response?: { data?: { detail?: string; message?: string } }
+      message?: string
+    }
+    errorMessage.value =
+      err.response?.data?.detail ||
+      err.response?.data?.message ||
+      err.message ||
+      'Unable to load investment details.'
   } finally {
     detailLoading.value = false
   }
@@ -214,10 +366,10 @@ function getProgressPercentage(raised: number | null, target: number | null): nu
 function getCategoryIcon(category: string): string {
   const iconMap: Record<string, string> = {
     'Crop Farming': cropIcon,
-    'Fishery': fishIcon,
+    Fishery: fishIcon,
     'Mixed Farming': mixedIcon,
-    'Livestock': livestockIcon,
-    'Poultry': poultryIcon,
+    Livestock: livestockIcon,
+    Poultry: poultryIcon,
   }
   return iconMap[category] || ''
 }
@@ -230,8 +382,15 @@ onMounted(async () => {
     investmentSummary.value = asRecord(data.summary)
     investments.value = extractInvestments(response).map(mapInvestment)
   } catch (error) {
-    const err = error as { response?: { data?: { detail?: string; message?: string } }; message?: string }
-    errorMessage.value = err.response?.data?.detail || err.response?.data?.message || err.message || 'Unable to load investments.'
+    const err = error as {
+      response?: { data?: { detail?: string; message?: string } }
+      message?: string
+    }
+    errorMessage.value =
+      err.response?.data?.detail ||
+      err.response?.data?.message ||
+      err.message ||
+      'Unable to load investments.'
   } finally {
     loading.value = false
   }
@@ -311,9 +470,15 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-if="loading"><td colspan="8">Loading investments…</td></tr>
-              <tr v-else-if="errorMessage"><td colspan="8">{{ errorMessage }}</td></tr>
-              <tr v-else-if="!paginatedInvestments.length"><td colspan="8">No investments found.</td></tr>
+              <tr v-if="loading">
+                <td colspan="8">Loading investments…</td>
+              </tr>
+              <tr v-else-if="errorMessage">
+                <td colspan="8">{{ errorMessage }}</td>
+              </tr>
+              <tr v-else-if="!paginatedInvestments.length">
+                <td colspan="8">No investments found.</td>
+              </tr>
               <tr v-for="investment in paginatedInvestments" :key="investment.id">
                 <td>
                   <div class="package-cell">
@@ -332,11 +497,7 @@ onMounted(async () => {
                   </span>
                 </td>
                 <td>
-                  <button
-                    @click="selectInvestment(investment)"
-                    class="btn-view"
-                    type="button"
-                  >
+                  <button @click="selectInvestment(investment)" class="btn-view" type="button">
                     View
                   </button>
                 </td>
@@ -347,11 +508,19 @@ onMounted(async () => {
 
         <!-- Pagination -->
         <div class="pagination">
-          <p class="pagination__info">Showing {{ paginatedInvestments.length ? (currentPage - 1) * itemsPerPage + 1 : 0 }} - {{ Math.min(currentPage * itemsPerPage, totalItems) }} of {{ totalItems }} Applications</p>
+          <p class="pagination__info">
+            Showing {{ paginatedInvestments.length ? (currentPage - 1) * itemsPerPage + 1 : 0 }} -
+            {{ Math.min(currentPage * itemsPerPage, totalItems) }} of {{ totalItems }} Applications
+          </p>
           <div class="pagination__controls">
             <button class="page-btn" type="button" :disabled="currentPage === 1">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <path
+                  d="M10 3 5 8l5 5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
               </svg>
             </button>
             <button
@@ -365,7 +534,12 @@ onMounted(async () => {
             </button>
             <button class="page-btn" type="button" :disabled="currentPage === totalPages">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M6 3 11 8l-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <path
+                  d="M6 3 11 8l-5 5"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
               </svg>
             </button>
           </div>
@@ -384,7 +558,12 @@ onMounted(async () => {
       <div class="header-banner">
         <div class="header-banner__left">
           <div class="header-banner__icon">
-            <img v-if="getCategoryIcon(selectedInvestment.category)" :src="getCategoryIcon(selectedInvestment.category)" :alt="selectedInvestment.category" class="header-banner__icon-img" />
+            <img
+              v-if="getCategoryIcon(selectedInvestment.category)"
+              :src="getCategoryIcon(selectedInvestment.category)"
+              :alt="selectedInvestment.category"
+              class="header-banner__icon-img"
+            />
           </div>
           <div class="header-banner__info">
             <div class="header-banner__title-row">
@@ -392,7 +571,8 @@ onMounted(async () => {
               <span class="category-pill">{{ selectedInvestment.category }}</span>
             </div>
             <p class="header-banner__subtitle">
-              {{ selectedInvestment.investmentId }} • Invested on {{ selectedInvestment.dateInvested }}
+              {{ selectedInvestment.investmentId }} • Invested on
+              {{ selectedInvestment.dateInvested }}
             </p>
           </div>
         </div>
@@ -435,7 +615,9 @@ onMounted(async () => {
             </div>
             <div class="highlight-banner__content">
               <p class="highlight-banner__label">Amount Invested</p>
-              <p class="highlight-banner__value">{{ formatCurrency(selectedInvestment.amountInvested) }}</p>
+              <p class="highlight-banner__value">
+                {{ formatCurrency(selectedInvestment.amountInvested) }}
+              </p>
             </div>
           </div>
 
@@ -465,25 +647,46 @@ onMounted(async () => {
 
         <!-- Right Column: Stacked Cards -->
         <div class="details-column-right">
-          <!-- Top Card: Package Funding Progress -->
+          <!-- Top Card: Investment Progress -->
           <div class="details-card">
             <div class="details-card__header">
-              <h3 class="details-card__title">Package Funding Progress</h3>
-              <span class="progress-percentage">{{ selectedInvestment.progressPercentage ?? getProgressPercentage(selectedInvestment.raised, selectedInvestment.targetAmount) }}%</span>
+              <h3 class="details-card__title">Investment Progress</h3>
+              <span class="progress-percentage"
+                >{{
+                  selectedInvestment.progressPercentage ??
+                  getProgressPercentage(selectedInvestment.raised, selectedInvestment.targetAmount)
+                }}%</span
+              >
             </div>
-            <p class="details-card__subtitle">Overall funding and farm impact for this package.</p>
+            <p class="details-card__subtitle">
+              Track your investment progress and expected returns.
+            </p>
 
             <div class="progress-bar-container">
               <div class="progress-bar-track">
                 <div
                   class="progress-bar-fill"
-                  :style="{ width: Math.min(100, selectedInvestment.progressPercentage ?? getProgressPercentage(selectedInvestment.raised, selectedInvestment.targetAmount)) + '%' }"
+                  :style="{
+                    width:
+                      Math.min(
+                        100,
+                        selectedInvestment.progressPercentage ??
+                          getProgressPercentage(
+                            selectedInvestment.raised,
+                            selectedInvestment.targetAmount,
+                          ),
+                      ) + '%',
+                  }"
                 ></div>
               </div>
             </div>
 
             <p class="progress-sublabel">
-              <strong>{{ formatCurrency(selectedInvestment.raised) }}</strong> raised of {{ formatCurrency(selectedInvestment.targetAmount) }}
+              <strong>{{
+                formatCurrency(selectedInvestment.investmentExpectedPayoutToDate)
+              }}</strong>
+              expected payout to date of
+              {{ formatCurrency(selectedInvestment.investmentExpectedSettlementAmount) }}
             </p>
 
             <!-- 3 Metric Badges -->
@@ -492,25 +695,26 @@ onMounted(async () => {
                 <div class="metric-badge__icon">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path
-                      d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
+                      d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
                       stroke="currentColor"
                       stroke-width="1.5"
                       stroke-linecap="round"
                       stroke-linejoin="round"
                     />
-                    <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.5" />
                   </svg>
                 </div>
                 <div class="metric-badge__content">
-                  <p class="metric-badge__value">{{ selectedInvestment.farmersSupported }}</p>
-                  <p class="metric-badge__label">Farmers Supported</p>
+                  <p class="metric-badge__value">
+                    {{ selectedInvestment.investmentElapsedDays ?? '—' }}
+                  </p>
+                  <p class="metric-badge__label">Elapsed Days</p>
                 </div>
               </div>
               <div class="metric-badge">
                 <div class="metric-badge__icon">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path
-                      d="M3 21h18M5 21V7l8-4 8 4v14M8 21v-9a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v9"
+                      d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"
                       stroke="currentColor"
                       stroke-width="1.5"
                       stroke-linecap="round"
@@ -519,26 +723,29 @@ onMounted(async () => {
                   </svg>
                 </div>
                 <div class="metric-badge__content">
-                  <p class="metric-badge__value">{{ selectedInvestment.farmSize }}</p>
-                  <p class="metric-badge__label">Total Farm Size</p>
+                  <p class="metric-badge__value">
+                    {{ selectedInvestment.investmentRemainingDays ?? '—' }}
+                  </p>
+                  <p class="metric-badge__label">Remaining Days</p>
                 </div>
               </div>
               <div class="metric-badge">
                 <div class="metric-badge__icon">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                     <path
-                      d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
+                      d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
                       stroke="currentColor"
                       stroke-width="1.5"
                       stroke-linecap="round"
                       stroke-linejoin="round"
                     />
-                    <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.5" />
                   </svg>
                 </div>
                 <div class="metric-badge__content">
-                  <p class="metric-badge__value">{{ selectedInvestment.locations }}</p>
-                  <p class="metric-badge__label">Locations</p>
+                  <p class="metric-badge__value">
+                    {{ formatCurrency(selectedInvestment.investmentExpectedProfit) }}
+                  </p>
+                  <p class="metric-badge__label">Expected Profit</p>
                 </div>
               </div>
             </div>
@@ -547,7 +754,9 @@ onMounted(async () => {
           <!-- Bottom Card: Settlement Information -->
           <div class="details-card">
             <h3 class="details-card__title">Settlement Information</h3>
-            <p class="details-card__subtitle">Details about the expected settlement for your investment.</p>
+            <p class="details-card__subtitle">
+              Details about the expected settlement for your investment.
+            </p>
 
             <div class="spec-row spec-row--full">
               <span class="spec-row__label"><strong>Expected Settlement Date</strong></span>
@@ -555,16 +764,16 @@ onMounted(async () => {
             </div>
             <div class="spec-row spec-row--full">
               <span class="spec-row__label"><strong>Expected Settlement Amount</strong></span>
-              <span class="spec-row__value">{{ formatCurrency(selectedInvestment.expectedSettlementAmount) }}</span>
+              <span class="spec-row__value">{{
+                formatCurrency(selectedInvestment.expectedSettlementAmount)
+              }}</span>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Back Button -->
-      <button @click="goBack" class="btn-back" type="button">
-        ← Back to Investments
-      </button>
+      <button @click="goBack" class="btn-back" type="button">← Back to Investments</button>
     </div>
   </div>
 </template>
