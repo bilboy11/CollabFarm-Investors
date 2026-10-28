@@ -10,6 +10,7 @@ const md = new MarkdownIt({ breaks: true, linkify: true })
 const isOpen = ref(false)
 const chatbot = ref<HTMLElement | null>(null)
 const messagesContainer = ref<HTMLElement | null>(null)
+const messageInput = ref<HTMLInputElement | null>(null)
 const message = ref('')
 const messages = ref([
   {
@@ -32,6 +33,12 @@ watch(
   },
   { flush: 'post' },
 )
+
+watch(isOpen, async (open) => {
+  if (!open) return
+  await nextTick()
+  messageInput.value?.focus()
+})
 
 function createSessionId(): string {
   const id =
@@ -95,6 +102,8 @@ async function sendMessage() {
     )
   } finally {
     isSending.value = false
+    await nextTick()
+    if (isOpen.value) messageInput.value?.focus()
   }
 }
 </script>
@@ -157,18 +166,8 @@ async function sendMessage() {
       </div>
 
       <div class="chatbot__input">
-        <button class="chatbot__attach" aria-label="Add attachment">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path
-              d="M10 3v14M3 10h14"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
         <input
+          ref="messageInput"
           v-model="message"
           type="text"
           placeholder="Ask about agricultural investment..."
@@ -202,6 +201,7 @@ async function sendMessage() {
   bottom: 16px;
   right: 16px;
   z-index: 1000;
+  cursor: auto;
 }
 
 .chatbot__button {
@@ -447,29 +447,8 @@ async function sendMessage() {
   background: #fff;
 }
 
-.chatbot__attach {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 40px;
-  border: none;
-  border-radius: 24px 0 0 24px;
-  background: #f7f7f7;
-  color: #858585;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.chatbot__attach:hover {
-  background: #e8ebe7;
-  color: var(--color-ink);
-}
-
 .chatbot__input input {
   flex: 1;
-  margin-left: -8px;
   padding: 12px 4px;
   border: 1px solid #e8ebe7;
   border-radius: 0 24px 24px 0;
